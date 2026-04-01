@@ -36,7 +36,7 @@ def create_user():
     save_data(data)
     return jsonify({"msg": "User created"})
 
-# ---------------- Items ----------------
+# ---------------- Items com CONTADOR ----------------
 @app.route('/api/items', methods=['GET'])
 def get_items():
     data = load_data()
@@ -46,16 +46,57 @@ def get_items():
 def add_item():
     data = load_data()
     body = request.json
-    data['items'].append(body)
+
+    name = body['name']
+    category = body['category']
+
+    # 🔥 Verifica se já existe
+    for item in data['items']:
+        if item['name'] == name:
+            item['quantity'] = item.get('quantity', 1) + 1
+            save_data(data)
+            return jsonify({"msg": "Quantidade aumentada"})
+
+    # Se não existe, cria com quantidade 1
+    data['items'].append({
+        "name": name,
+        "category": category,
+        "quantity": 1
+    })
+
     save_data(data)
-    return jsonify({"msg": "Item added"})
+    return jsonify({"msg": "Item adicionado"})
 
 @app.route('/api/items/<name>', methods=['DELETE'])
 def delete_item(name):
     data = load_data()
-    data['items'] = [i for i in data['items'] if i['name'] != name]
+
+    for item in data['items']:
+        if item['name'] == name:
+            if item.get('quantity', 1) > 1:
+                item['quantity'] -= 1
+            else:
+                data['items'].remove(item)
+            break
+
     save_data(data)
-    return jsonify({"msg": "Item removed"})
+    return jsonify({"msg": "Item atualizado/removido"})
+
+# ---------------- CONTADOR DE PERIFÉRICOS ----------------
+@app.route('/api/perifericos', methods=['GET'])
+def contar_perifericos():
+    data = load_data()
+    contador = {}
+
+    for item in data['items']:
+        cat = item.get('category', 'Outros')
+        qtd = item.get('quantity', 1)
+
+        if cat not in contador:
+            contador[cat] = 0
+        contador[cat] += qtd
+
+    return jsonify(contador)
 
 # ---------------- Run ----------------
 if __name__ == '__main__':
