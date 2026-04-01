@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Controle de Estoque TI</title>
+  <style>
+    body { font-family: Arial; margin: 40px; }
+    input, select, button { margin: 5px; padding: 5px; }
+    li { margin: 5px 0; }
+  </style>
+</head>
+<body>
+
+<h2>Login</h2>
+<input id="user" placeholder="Usuário">
+<input id="pass" type="password" placeholder="Senha">
+<button onclick="login()">Entrar</button>
+
+<div id="app" style="display:none">
+  <h2>Controle de Estoque</h2>
+
+  <h3>Adicionar Item</h3>
+  <input id="itemName" placeholder="Nome do item">
+  <input id="category" placeholder="Categoria">
+  <button onclick="addItem()">Adicionar</button>
+
+  <h3>Lista de Itens</h3>
+  <ul id="list"></ul>
+
+  <h3>Criar usuário (admin)</h3>
+  <input id="newUser" placeholder="Usuário">
+  <input id="newPass" placeholder="Senha">
+  <select id="role">
+    <option value="admin">Admin</option>
+    <option value="operador">Operador</option>
+    <option value="visualizador">Visualizador</option>
+  </select>
+  <button onclick="createUser()">Criar Usuário</button>
+</div>
+
+<script>
+const API = "https://controle-de-estoque-fpmk.onrender.com";
+let currentUser = null;
+
+async function login(){
+  const username = document.getElementById('user').value;
+  const password = document.getElementById('pass').value;
+
+  const res = await fetch(API + '/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  if(!res.ok){
+    alert('Erro no login');
+    return;
+  }
+
+  currentUser = await res.json();
+  document.getElementById('app').style.display = 'block';
+  loadItems();
+}
+
+async function loadItems(){
+  const res = await fetch(API + '/api/items');
+  const items = await res.json();
+
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+
+  items.forEach(i => {
+    const li = document.createElement('li');
+    li.innerHTML = `${i.name} (${i.category}) `;
+
+    if(currentUser.role !== 'visualizador'){
+      const btn = document.createElement('button');
+      btn.innerText = 'Remover';
+      btn.onclick = () => deleteItem(i.name);
+      li.appendChild(btn);
+    }
+
+    list.appendChild(li);
+  });
+}
+
+async function addItem(){
+  if(currentUser.role === 'visualizador'){
+    alert('Sem permissão');
+    return;
+  }
+
+  const name = document.getElementById('itemName').value;
+  const category = document.getElementById('category').value;
+
+  await fetch(API + '/api/items', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, category })
+  });
+
+  loadItems();
+}
+
+async function deleteItem(name){
+  await fetch(API + '/api/items/' + name, {
+    method: 'DELETE'
+  });
+
+  loadItems();
+}
+
+async function createUser(){
+  if(currentUser.role !== 'admin'){
+    alert('Apenas admin pode criar usuários');
+    return;
+  }
+
+  const username = document.getElementById('newUser').value;
+  const password = document.getElementById('newPass').value;
+  const role = document.getElementById('role').value;
+
+  await fetch(API + '/api/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, role })
+  });
+
+  alert('Usuário criado com sucesso');
+}
+</script>
+
+</body>
+</html>
